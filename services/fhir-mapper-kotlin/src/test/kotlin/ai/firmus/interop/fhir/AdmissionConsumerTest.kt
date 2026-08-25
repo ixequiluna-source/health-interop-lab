@@ -53,8 +53,31 @@ class AdmissionConsumerTest {
         shutdownTimeout = Duration.ofMillis(100),
     )
 
-    private fun mockConsumer(): MockConsumer<String, String> =
-        MockConsumer<String, String>(OffsetResetStrategy.EARLIEST).apply {
+    /**
+     * A MockConsumer that records every commit as it happens.
+     *
+     * The loop closes the consumer in its finally block, which is the correct production
+     * behaviour — closing is what sends LeaveGroup and stops the group stalling for a full
+     * session timeout on every deploy. But a closed MockConsumer throws from `committed()`, so a
+     * test that asks it what was committed *after* the run fails on the close rather than on the
+     * behaviour it meant to check.
+     *
+     * Recording commits as they occur also makes the assertion stronger: it covers the whole run
+     * rather than the state at one arbitrary moment inside it.
+     */
+    private class RecordingMockConsumer :
+        MockConsumer<String, String>(OffsetResetStrategy.EARLIEST) {
+
+        val commits = mutableMapOf<TopicPartition, OffsetAndMetadata>()
+
+        override fun commitSync(offsets: MutableMap<TopicPartition, OffsetAndMetadata>) {
+            commits.putAll(offsets)
+            super.commitSync(offsets)
+        }
+    }
+
+    private fun mockConsumer(): RecordingMockConsumer =
+        RecordingMockConsumer().apply {
             updateBeginningOffsets(mapOf(partition to 0L))
         }
 
@@ -130,7 +153,7 @@ class AdmissionConsumerTest {
 
         assertFailsWith<ProjectionWriteException> { consumer.run() }
 
-        assertTrue(mock.committed(setOf(partition)).isEmpty(), "nothing may be committed")
+        assertTrue(mock.commits.isEmpty(), "nothing may be committed")
     }
 
     @Test
@@ -151,7 +174,7 @@ class AdmissionConsumerTest {
 
         assertFailsWith<ProjectionWriteException> { consumer.run() }
 
-        assertTrue(mock.committed(setOf(partition)).isEmpty(), "nothing may be committed")
+        assertTrue(mock.commits.isEmpty(), "nothing may be committed")
         assertTrue(parked.isEmpty(), "a transient failure must never be dead-lettered")
     }
 

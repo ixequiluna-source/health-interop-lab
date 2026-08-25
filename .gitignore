@@ -1,0 +1,46 @@
+# Build output
+target/
+build/
+bin/
+obj/
+dist/
+gen/
+out/
+*.class
+*.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# Dependencies
+node_modules/
+.angular/
+
+# Go
+coverage.out
+vendor/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.tfvars
+!example.tfvars
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editors and OS
+.DS_Store
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+
+# Never commit anything that looks like a credential.
+*.pem
+*.key
+*-service-account.json
+.env
+.env.*

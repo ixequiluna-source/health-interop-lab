@@ -1,0 +1,135 @@
+<header class="page-header">
+  <div>
+    <h1 class="page-title">Pipeline status</h1>
+    <p class="page-lede">
+      HL7 v2 MLLP ingest → Kafka → FHIR mapper → MongoDB → gRPC read gateway, plus the EDI X12 837P
+      claims service. Polled every {{ pollSeconds }}s.
+    </p>
+  </div>
+
+  @if (statusResource.hasValue()) {
+    <p class="overall" [attr.data-health]="overall()">
+      <span class="dot" aria-hidden="true"></span>
+      <!--
+        The rollup is worst-wins, and it says so. An operator seeing "Degraded" here with
+        four green cards below needs to know the header is not averaging anything — a
+        pipeline with one stage down is not 80% healthy, it is not delivering admissions.
+      -->
+      <span>{{ healthLabel(overall()) }}</span>
+      <span class="overall__note">worst of {{ services().length }} services</span>
+    </p>
+  }
+</header>
+
+<!--
+  Announces the rollup and the failure count when they change, and nothing else. Polling
+  every fifteen seconds through an assertive region would make this page unusable with a
+  screen reader; `role="status"` is polite, and the text only changes when the *state*
+  changes rather than on every poll, because the counters are not in it.
+-->
+<p class="visually-hidden" role="status">
+  @if (statusResource.hasValue()) {
+    Pipeline {{ healthLabel(overall()) }}. {{ totalFailed() }} failed messages across the pipeline.
+  }
+</p>
+
+@switch (statusResource.status()) {
+  @case ('loading') {
+    <p class="state state--quiet" role="status">Loading pipeline status…</p>
+  }
+
+  @case ('error') {
+    @let err = error();
+    <div class="state state--error" role="alert">
+      <p class="state__title">Pipeline status is unavailable.</p>
+      <p class="state__detail">{{ err?.message }}</p>
+      @if (err?.traceId; as traceId) {
+        <p class="state__trace">
+          Trace <code>{{ traceId }}</code>
+        </p>
+      }
+      <p class="state__detail">
+        This says nothing about the pipeline itself — only that the health endpoint could not be
+        read. Messages may still be flowing.
+      </p>
+      <button type="button" class="button" (click)="onRetry()">Try again</button>
+    </div>
+  }
+
+  @default {
+    <ul class="services">
+      @for (service of orderedServices(); track service.id) {
+        <li class="service" [attr.data-health]="service.health">
+          <div class="service__head">
+            <span class="service__stage">{{ stageLabel(service.stage) }}</span>
+            <span class="service__health">
+              <span class="dot" aria-hidden="true"></span>
+              <!--
+                The health state is text, not just a coloured dot. Roughly 4% of men cannot
+                reliably distinguish the red and green used here, and an operations dashboard
+                whose meaning is carried by hue alone is unreadable for them.
+              -->
+              {{ healthLabel(service.health) }}
+            </span>
+          </div>
+
+          <h2 class="service__name">{{ service.displayName }}</h2>
+          <p class="service__runtime">{{ service.runtime }}</p>
+
+          @if (service.detail) {
+            <p class="service__detail">{{ service.detail }}</p>
+          }
+
+          @if (service.counters; as counters) {
+            <!--
+              Three counters, never rolled into one. They call for different responses:
+              `rejected` is an upstream configuration conversation, `failed` is an incident,
+              and a single "errors" number would put a sender's misconfigured ADT trigger on
+              the same alert as a broker outage.
+            -->
+            <dl class="counters">
+              <div class="counters__item">
+                <dt>Accepted</dt>
+                <dd>{{ counters.accepted | number }}</dd>
+              </div>
+              <div class="counters__item" [class.is-warn]="counters.rejected > 0">
+                <dt title="Understood and refused. Not retryable.">Rejected</dt>
+                <dd>{{ counters.rejected | number }}</dd>
+              </div>
+              <div class="counters__item" [class.is-bad]="counters.failed > 0">
+                <dt title="Processing broke. Retryable.">Failed</dt>
+                <dd>{{ counters.failed | number }}</dd>
+              </div>
+            </dl>
+          } @else {
+            <!--
+              An explicit statement rather than three zeroes. A gateway that answers read
+              queries has no message disposition, and showing "0 failed" for it would be a
+              green zero indistinguishable from "nothing has failed today" — a materially
+              different claim.
+            -->
+            <p class="service__no-counters">
+              No message counters — this service does not own a message disposition.
+            </p>
+          }
+
+          <p class="service__checked">
+            Probed
+            <time [attr.datetime]="service.checkedAt">{{
+              service.checkedAt | date: 'HH:mm:ss'
+            }}</time>
+          </p>
+        </li>
+      }
+    </ul>
+
+    @if (statusResource.hasValue()) {
+      <p class="observed">
+        Snapshot taken {{ statusResource.value().observedAt | date: 'medium' }}.
+        @if (statusResource.isLoading()) {
+          <span> Refreshing…</span>
+        }
+      </p>
+    }
+  }
+}

@@ -1,0 +1,11 @@
+/* Build configuration. Excludes everything that exists only for tests, so a test helper can
+   never be reached from application code — the compiler enforces it rather than review. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/app",
+    "types": []
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts", "src/testing/**/*.ts"]
+}

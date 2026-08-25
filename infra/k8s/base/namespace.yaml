@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: interop
+  labels:
+    data-class: phi
+    # Pod Security Admission, enforced at the namespace. The restricted profile is what
+    # actually stops a pod from running as root or requesting privileged capabilities;
+    # the per-pod securityContext below it is defence in depth, not the control itself.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: interop-workload
+  namespace: interop
+  annotations:
+    # Bound to the Google service account by Workload Identity, so pods get short-lived,
+    # revocable credentials instead of a long-lived JSON key mounted as a Secret.
+    iam.gke.io/gcp-service-account: interop-ENVIRONMENT-workload@REPLACE_PROJECT.iam.gserviceaccount.com
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: interop-quota
+  namespace: interop
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "40"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: interop-limits
+  namespace: interop
+spec:
+  limits:
+    - type: Container
+      # A container that arrives without limits gets these rather than none, so a manifest
+      # that slips through review cannot consume a whole node.
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 2Gi

@@ -1,0 +1,167 @@
+# Default deny, then explicit allows.
+#
+# A namespace with no NetworkPolicy is fully open: any pod can reach any other pod in the
+# cluster. For a namespace holding PHI that is the finding, not a detail. These policies only
+# take effect because the cluster enables Calico (see infra/terraform/gke.tf) — NetworkPolicy
+# objects on a cluster with no enforcer are inert YAML that reads like segmentation.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: interop
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: interop
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-telemetry-egress
+  namespace: interop
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: otel-collector
+      ports:
+        - protocol: TCP
+          port: 4317
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hl7-ingest
+  namespace: interop
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: hl7-ingest
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # MLLP arrives from the hospital interface engine, which reaches the cluster through an
+    # internal load balancer. The source is pinned to the on-premise range rather than left
+    # open to the VPC.
+    - from:
+        - ipBlock:
+            cidr: 10.10.0.0/20
+      ports:
+        - protocol: TCP
+          port: 2575
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fhir-mapper
+  namespace: interop
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: fhir-mapper
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mongo
+      ports:
+        - protocol: TCP
+          port: 27017
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: patient-gateway
+  namespace: interop
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: patient-gateway
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: console
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Read-only: the gateway reaches the projection and nothing else. It has no path to
+    # Kafka, so it cannot become a second, unaudited write path into the platform.
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mongo
+      ports:
+        - protocol: TCP
+          port: 27017

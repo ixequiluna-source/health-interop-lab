@@ -1,0 +1,74 @@
+name: policy (SOC 2 controls as code)
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  controls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install pytest pyyaml
+
+      # Every check here maps to a row in compliance/soc2/control-matrix.md. A manifest that
+      # drops readOnlyRootFilesystem fails this job rather than being noticed at an audit.
+      - name: Enforce controls
+        run: python -m pytest tools/policy/test_policies.py -v
+
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render Kubernetes manifests
+        run: |
+          curl -sSLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.5.0/kustomize_v5.5.0_linux_amd64.tar.gz
+          tar -xzf kustomize.tar.gz
+          ./kustomize build infra/k8s/base > /dev/null
+          ./kustomize build infra/k8s/overlays/prod > /dev/null
+
+      - name: Validate against the Kubernetes schemas
+        run: |
+          curl -sSLo kubeconform.tar.gz https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar -xzf kubeconform.tar.gz
+          ./kustomize build infra/k8s/base | ./kubeconform -strict -summary -
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Format
+        run: terraform -chdir=infra/terraform fmt -check -recursive
+
+      # `validate` without `init` cannot resolve providers; -backend=false keeps it from
+      # trying to reach the real state bucket, which CI has no business touching.
+      - name: Validate
+        run: |
+          terraform -chdir=infra/terraform init -backend=false
+          terraform -chdir=infra/terraform validate
+
+  otel-collector:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate the collector configuration
+        run: |
+          docker run --rm -v "$PWD/observability:/cfg" \
+            otel/opentelemetry-collector-contrib:0.116.1 \
+            validate --config=/cfg/otel-collector.yaml

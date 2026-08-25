@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: interop
+
+resources:
+  - ../../base
+
+# Images are pinned by digest in production, not by tag.
+#
+# A tag is a moving pointer even when a registry forbids overwriting it, because the
+# deployment resolves it at admission time. Pinning the digest means the bytes running in
+# the cluster are the bytes that were scanned and approved, and it is what makes the
+# Binary Authorization policy in Terraform meaningful.
+images:
+  - name: us-central1-docker.pkg.dev/REPLACE_PROJECT/interop-images/hl7-ingest
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: us-central1-docker.pkg.dev/REPLACE_PROJECT/interop-images/fhir-mapper
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: us-central1-docker.pkg.dev/REPLACE_PROJECT/interop-images/patient-gateway
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: us-central1-docker.pkg.dev/REPLACE_PROJECT/interop-images/claims-edi
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: us-central1-docker.pkg.dev/REPLACE_PROJECT/interop-images/console
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+replicas:
+  - name: hl7-ingest
+    count: 4
+  - name: patient-gateway
+    count: 6

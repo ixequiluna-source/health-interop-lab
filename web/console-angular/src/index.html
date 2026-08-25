@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Interop console</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!--
+      The console renders patient data. It must not end up in a search index or in a
+      third-party crawler's cache, and `noindex` is the cheap half of that (the other half is
+      the authenticating proxy in front of it). `noarchive` additionally asks crawlers that
+      do reach it not to keep a copy.
+    -->
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+
+    <!--
+      `no-referrer` because this console's own URLs contain an MRN on the patient detail
+      route. Without it, any outbound navigation leaks that path to the destination in the
+      `Referer` header — including to error-reporting and analytics endpoints, which is
+      exactly the kind of PHI egress nobody remembers configuring.
+    -->
+    <meta name="referrer" content="no-referrer" />
+
+    <!--
+      Set before first paint so the browser paints its own chrome — scrollbars, form
+      controls, the canvas behind the app — in the right scheme, rather than flashing a light
+      background before the stylesheet lands.
+    -->
+    <meta name="color-scheme" content="light dark" />
+
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>

@@ -1,0 +1,253 @@
+:host {
+  display: block;
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.page-title {
+  font-size: 1.5rem;
+}
+
+.page-lede {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  max-width: 44rem;
+}
+
+/*
+ * Health colouring is driven by a `data-health` attribute rather than by five class names,
+ * so the mapping from state to colour lives in one block and a new state cannot be added
+ * without a visible gap here.
+ */
+[data-health='healthy'] {
+  --health-fg: var(--status-healthy);
+  --health-bg: var(--status-healthy-bg);
+}
+
+[data-health='degraded'] {
+  --health-fg: var(--status-degraded);
+  --health-bg: var(--status-degraded-bg);
+}
+
+[data-health='down'] {
+  --health-fg: var(--status-down);
+  --health-bg: var(--status-down-bg);
+}
+
+[data-health='unknown'] {
+  --health-fg: var(--status-unknown);
+  --health-bg: var(--status-unknown-bg);
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--health-fg);
+  flex: none;
+}
+
+.overall {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--health-fg);
+  background: var(--health-bg);
+  color: var(--health-fg);
+  font-weight: 600;
+}
+
+.overall__note {
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.services {
+  list-style: none;
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  display: grid;
+  /* Cards are laid out by available width, not by a fixed column count, so the dashboard
+     reflows from five across on a wide monitor to one on a phone with no breakpoints. */
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-4);
+}
+
+.service {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  /* The health colour appears as a left edge as well as in the label — a second, quieter
+     encoding that survives being glanced at from across a room. */
+  border-left: 3px solid var(--health-fg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
+}
+
+.service__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.service__stage {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.service__health {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--health-fg);
+}
+
+.service__name {
+  font-size: 1rem;
+  margin-top: var(--space-1);
+}
+
+.service__runtime {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.service__detail {
+  margin: var(--space-2) 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.service__no-counters {
+  margin: var(--space-3) 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.counters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.counters__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.counters dt {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.counters dd {
+  margin: 0;
+  /* Tabular figures so the three columns align on the decimal and a jump in magnitude is
+     visible as a change in width rather than only as different digits. */
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.counters__item.is-warn dd {
+  color: var(--status-degraded);
+}
+
+.counters__item.is-bad dd {
+  color: var(--status-down);
+}
+
+.service__checked {
+  margin: var(--space-3) 0 0;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.observed {
+  margin: var(--space-5) 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.state {
+  margin: var(--space-5) 0 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.state--quiet {
+  color: var(--text-secondary);
+}
+
+.state--error {
+  border-color: var(--status-down);
+  background: var(--status-down-bg);
+}
+
+.state__title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.state__detail {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.state__trace {
+  margin: var(--space-3) 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.state__trace code {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.button {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.button:hover {
+  background: var(--accent-hover);
+}

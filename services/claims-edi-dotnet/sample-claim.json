@@ -1,0 +1,35 @@
+{
+  "event": {
+    "schemaVersion": "1.0.0",
+    "eventId": "evt-0001",
+    "messageControlId": "MSG1",
+    "messageType": "ADT^A01",
+    "sendingApplication": "EPIC_ADT",
+    "sendingFacility": "HGS",
+    "recordedAt": "2026-08-25T14:30:05Z",
+    "patient": {
+      "medicalRecordNumber": "MRN-4417",
+      "familyName": "LUNA",
+      "givenName": "IXEQUI",
+      "birthDate": "1974-03-14",
+      "administrativeSex": "M"
+    },
+    "encounter": {
+      "visitNumber": "V-90210",
+      "patientClass": "I",
+      "admitDateTime": "2026-08-25T14:30:00Z",
+      "attendingClinician": "DR HOUSE",
+      "facility": "HGS"
+    }
+  },
+  "claimId": "CLM-1001",
+  "principalDiagnosisCode": "J189",
+  "serviceLines": [
+    {
+      "procedureCode": "99223",
+      "modifiers": ["25"],
+      "chargeAmount": 425.50,
+      "units": 1
+    }
+  ]
+}

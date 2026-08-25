@@ -1,0 +1,103 @@
+# Local pipeline: Kafka, MongoDB, the collector and all five services.
+#
+# For development only. Every credential here is a well-known default and every service is
+# reachable on the host, which is precisely what the Kubernetes manifests in infra/k8s do not
+# allow. Do not point this at anything real.
+
+name: health-interop-lab
+
+services:
+  kafka:
+    image: apache/kafka:3.9.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: interop-local-cluster-0001
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  mongo:
+    image: mongo:8.0
+    command: ["--bind_ip_all"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    command: ["--config=/etc/otel/collector.yaml"]
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otel/collector.yaml:ro
+    environment:
+      # The local pipeline exports nowhere; the debug exporter prints a summary instead.
+      OTLP_BACKEND_ENDPOINT: "localhost:4317"
+      OTLP_BACKEND_AUTH: "none"
+    ports:
+      - "4317:4317"
+
+  hl7-ingest:
+    build:
+      context: ./services/hl7-ingest-java
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: clinical.admissions.v1
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+    ports:
+      - "2575:2575"
+      - "8081:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  fhir-mapper:
+    build:
+      context: ./services/fhir-mapper-kotlin
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: clinical.admissions.v1
+      MONGODB_URI: mongodb://mongo:27017
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+    ports:
+      - "8082:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+
+  patient-gateway:
+    build:
+      # Builds from the repository root: the Go service compiles the .proto from proto/.
+      context: .
+      dockerfile: services/patient-gateway-go/Dockerfile
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+      MONGODB_DATABASE: interop
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+      GRPC_REFLECTION: "true"
+    ports:
+      - "9090:9090"
+      - "8083:8080"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  console:
+    build:
+      context: ./web/console-angular
+    ports:
+      - "4200:8080"

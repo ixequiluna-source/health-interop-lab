@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package interop.v1;
+
+option go_package = "github.com/ixequiluna-source/health-interop-lab/services/patient-gateway-go/gen/interop/v1;interopv1";
+
+import "google/protobuf/timestamp.proto";
+
+// Read-side access to the patient index the FHIR mapper maintains.
+//
+// The gateway is deliberately read-only. Writes enter the platform through the HL7 feed so
+// that every change to a patient record has an inbound clinical message behind it; a
+// second, unaudited write path is how two systems end up disagreeing about a patient with
+// no way to say which one is right.
+service PatientService {
+  // Fetches one patient by medical record number.
+  rpc GetPatient(GetPatientRequest) returns (GetPatientResponse);
+
+  // Searches the index. Page size is capped server-side; see SearchPatientsRequest.
+  rpc SearchPatients(SearchPatientsRequest) returns (SearchPatientsResponse);
+
+  // Streams encounters for a patient, newest first.
+  rpc StreamEncounters(StreamEncountersRequest) returns (stream Encounter);
+}
+
+message GetPatientRequest {
+  // Medical record number. Required.
+  string medical_record_number = 1;
+}
+
+message GetPatientResponse {
+  Patient patient = 1;
+}
+
+message SearchPatientsRequest {
+  // Matched against family name, given name and identifiers. Required, min 2 characters.
+  string query = 1;
+
+  // Defaults to 25, capped at 100. An uncapped page size lets a single request pull the
+  // whole patient index, which is a bulk-disclosure incident rather than a slow query.
+  int32 page_size = 2;
+
+  // Opaque cursor from a previous response.
+  string page_token = 3;
+}
+
+message SearchPatientsResponse {
+  repeated Patient patients = 1;
+  string next_page_token = 2;
+  int32 total_matched = 3;
+}
+
+message StreamEncountersRequest {
+  string medical_record_number = 1;
+}
+
+message Identifier {
+  // Assigning authority, e.g. HGS or IMSS.
+  string system = 1;
+  string value = 2;
+  // HL7 table 0203 identifier type, e.g. MR or SS.
+  string type = 3;
+}
+
+message Patient {
+  string medical_record_number = 1;
+  repeated Identifier identifiers = 2;
+  string family_name = 3;
+  string given_name = 4;
+
+  // ISO 8601, possibly partial: "1990", "1990-03" and "1990-03-14" are all legal because
+  // HL7 permits partial dates. A date type here would force the server to invent a day.
+  string birth_date = 5;
+
+  // HL7 table 0001 administrative sex. Not a clinical statement about the patient.
+  string administrative_sex = 6;
+
+  google.protobuf.Timestamp last_updated = 7;
+}
+
+message Encounter {
+  string visit_number = 1;
+  string medical_record_number = 2;
+  string patient_class = 3;
+  google.protobuf.Timestamp admitted_at = 4;
+  string attending_clinician = 5;
+  Location location = 6;
+}
+
+message Location {
+  string point_of_care = 1;
+  string room = 2;
+  string bed = 3;
+  string facility = 4;
+}

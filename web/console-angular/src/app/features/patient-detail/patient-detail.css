@@ -1,0 +1,252 @@
+:host {
+  display: block;
+}
+
+.breadcrumb {
+  margin-bottom: var(--space-4);
+  font-size: 0.8125rem;
+}
+
+.breadcrumb a {
+  color: var(--text-secondary);
+}
+
+.page-title {
+  font-size: 1.5rem;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.record-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.record-header__mrn {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.panel {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.panel__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.panel__heading {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.panel__count {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.panel__empty {
+  margin: var(--space-3) 0 0;
+  color: var(--text-secondary);
+}
+
+.fields {
+  display: grid;
+  /* Auto-fit rather than a fixed column count: on a phone this collapses to one column
+     without a media query, and on a wide screen it uses the width instead of leaving the
+     right two thirds empty. */
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: var(--space-3) 0 0;
+}
+
+.fields__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fields dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.fields dd {
+  margin: 0;
+}
+
+.fields__code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.fields--inline {
+  margin-top: var(--space-2);
+  gap: var(--space-2) var(--space-4);
+}
+
+.identifiers {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.identifier {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.identifier__system {
+  font-weight: 500;
+  min-width: 3.5rem;
+}
+
+.identifier__type {
+  font-size: 0.6875rem;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.encounters {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.encounter {
+  padding: var(--space-3);
+  background: var(--surface-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.encounter__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.encounter__class {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Emergency and inpatient are tinted because they are the two an operator scans for.
+   The tint is an accent on top of a label that already says "Emergency" — never the only
+   thing carrying the meaning. */
+.encounter__class[data-class='E'] {
+  color: var(--status-down);
+  background: var(--status-down-bg);
+  border-color: var(--status-down);
+}
+
+.encounter__class[data-class='I'] {
+  color: var(--status-healthy);
+  background: var(--status-healthy-bg);
+  border-color: var(--status-healthy);
+}
+
+.encounter__time {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.encounter__tz {
+  color: var(--text-muted);
+}
+
+.state {
+  margin: var(--space-5) 0 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.state--quiet {
+  color: var(--text-secondary);
+}
+
+.state--error {
+  border-color: var(--status-down);
+  background: var(--status-down-bg);
+}
+
+.state__title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.state__detail {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.state__trace {
+  margin: var(--space-3) 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.state__trace code {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.button {
+  display: inline-block;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.button:hover {
+  background: var(--accent-hover);
+}

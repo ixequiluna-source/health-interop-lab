@@ -1,0 +1,47 @@
+/* TypeScript configuration: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html
+   Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options */
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // `noUnusedLocals` is on because this codebase treats an unused import or variable as a
+    // merge artefact, not as style. The common shape is a half-finished refactor: a symbol
+    // stops being referenced, nothing fails, and the dead branch survives review because
+    // nobody reads imports. `noUnusedParameters` is deliberately NOT enabled — Angular
+    // lifecycle and RxJS callback signatures frequently require positional parameters the
+    // body does not use, and the `_` prefix escape hatch is noisier than the rule is worth.
+    "noUnusedLocals": true,
+
+    // Index signature access must be bracketed and unchecked array indexing must be
+    // narrowed. `noUncheckedIndexedAccess` is what makes `patients[0]` a `Patient | undefined`
+    // — which it genuinely is on an empty page — instead of a runtime `undefined.familyName`.
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+
+    // `strictTemplates` is the reason a template can be trusted at all: without it the
+    // template is an untyped string and a renamed model field fails silently at runtime,
+    // rendering blank cells in a clinical list rather than failing the build.
+    "strictTemplates": true,
+    "typeCheckHostBindings": true
+  },
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.spec.json" }]
+}

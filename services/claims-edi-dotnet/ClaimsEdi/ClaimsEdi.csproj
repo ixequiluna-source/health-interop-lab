@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Firmus.Interop.ClaimsEdi</RootNamespace>
+    <AssemblyName>ClaimsEdi</AssemblyName>
+
+    <!--
+      Nothing in this service formats or parses with a user's culture: every number and date goes
+      through CultureInfo.InvariantCulture because X12 has exactly one representation for each.
+      Turning globalization off makes that structural rather than a convention, and drops the ICU
+      dependency from the runtime image.
+    -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!--
+      Warnings are not errors here. The build has to survive a compiler or analyser release adding
+      a new default-on diagnostic; failing the pipeline for a style rule that shipped overnight is
+      not a quality gate, it is an outage. Warnings are still surfaced in the build log and in CI.
+    -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Floating within the 3.7 line. The AWS SDK ships patch releases constantly and a hard pin goes
+      stale between deployments; the major/minor is what carries the API contract this code is
+      written against. A production deployment would add a NuGet lock file so the resolved version
+      is still reproducible.
+    -->
+    <PackageReference Include="AWSSDK.SQS" Version="3.7.*" />
+  </ItemGroup>
+
+</Project>

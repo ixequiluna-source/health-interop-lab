@@ -1,0 +1,214 @@
+/*
+ * Global tokens and element defaults.
+ *
+ * No CSS framework. The console has about a dozen distinct visual elements, and a framework
+ * would ship a design language, a reset and a utility vocabulary for all of them — most of
+ * which then has to be overridden to look like anything other than the framework. Custom
+ * properties give the same reuse without the payload or the override layer.
+ *
+ * The palette is a neutral grey scale plus one accent, because this is an operational
+ * console: colour has to carry meaning (a degraded service, a failed count) and every
+ * decorative use of colour spends some of the attention those states need.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces, lightest to most raised. */
+  --surface-base: #f6f7f9;
+  --surface-raised: #ffffff;
+  --surface-sunken: #eceef2;
+  --surface-hover: #e8eaef;
+
+  --border-subtle: #dfe3e9;
+  --border-strong: #c3cad4;
+
+  --text-primary: #16191d;
+  --text-secondary: #545c68;
+  --text-muted: #79828f;
+  --text-inverse: #ffffff;
+
+  --accent: #1f5fa8;
+  --accent-hover: #17497f;
+  --accent-subtle: #e8f0fa;
+
+  /*
+   * Status colours.
+   *
+   * Chosen for contrast against both surfaces rather than for saturation, and never used as
+   * the only signal — every status in the UI carries a text label as well. Around 4% of men
+   * cannot reliably separate the red and the green here, and an operations dashboard whose
+   * meaning is carried entirely by hue is unusable for them.
+   */
+  --status-healthy: #1a7f4b;
+  --status-degraded: #a86a10;
+  --status-down: #b3261e;
+  --status-unknown: #6b7280;
+
+  --status-healthy-bg: #e6f4ec;
+  --status-degraded-bg: #fdf3e2;
+  --status-down-bg: #fbeae9;
+  --status-unknown-bg: #eef0f3;
+
+  --focus-ring: #1f5fa8;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /*
+   * Identifiers — MRNs, visit numbers, trace ids — are set in a monospaced face throughout.
+   * Not decoration: fixed advance width is what lets someone compare two MRNs by eye, and
+   * the faces below disambiguate 0/O and 1/l/I, which is the whole failure mode when an
+   * identifier is read off a screen and typed into another system.
+   */
+  --font-mono:
+    ui-monospace, 'SF Mono', 'Cascadia Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+
+  --shadow-raised: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 8%);
+}
+
+/*
+ * Dark palette.
+ *
+ * `prefers-color-scheme` only — there is no in-app theme toggle. A toggle is a preference to
+ * persist, a control to place, and a flash-of-wrong-theme to prevent, in exchange for
+ * overriding a choice the operator already made at the OS level. Where the two disagree,
+ * the OS is right.
+ *
+ * Surfaces are not the light values inverted. Pure black backgrounds with near-white text
+ * produce halation around glyphs on OLED panels, so the base sits at ~#14161a and the text
+ * stops short of white.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-base: #14161a;
+    --surface-raised: #1c1f25;
+    --surface-sunken: #101216;
+    --surface-hover: #262a32;
+
+    --border-subtle: #2b3038;
+    --border-strong: #3d444f;
+
+    --text-primary: #e6e8ec;
+    --text-secondary: #a8b0bd;
+    --text-muted: #7d8697;
+    --text-inverse: #14161a;
+
+    --accent: #6ba4e8;
+    --accent-hover: #8dbaf0;
+    --accent-subtle: #1a2634;
+
+    --status-healthy: #57c98a;
+    --status-degraded: #e0a94a;
+    --status-down: #f0817a;
+    --status-unknown: #98a1ae;
+
+    --status-healthy-bg: #12291d;
+    --status-degraded-bg: #2c2313;
+    --status-down-bg: #2e1917;
+    --status-unknown-bg: #1f232a;
+
+    --focus-ring: #8dbaf0;
+
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 30%);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Not a fixed px size: a user who has raised their browser's default font size has done so
+     deliberately, and `16px` here silently discards that. */
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-base);
+  color: var(--text-primary);
+  line-height: 1.5;
+  font-size: 0.9375rem;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * A single, always-visible focus style.
+ *
+ * `:focus-visible` rather than `:focus` so a mouse click does not leave a ring behind, but
+ * the ring is never removed — an operations console is heavily keyboard-driven, and
+ * `outline: none` with no replacement makes it impossible to tell where you are. The offset
+ * keeps the ring off the element's own border so it stays legible on both surfaces.
+ */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/*
+ * Visually hidden, still announced.
+ *
+ * `display: none` and `visibility: hidden` both remove content from the accessibility tree,
+ * which is the opposite of what a screen-reader-only label needs. This clips it to a 1px box
+ * instead, which leaves it in the tree.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: var(--accent);
+}
+
+/*
+ * Motion is opt-out, not opt-in.
+ *
+ * The transitions in this console are small, but vestibular triggers do not scale with the
+ * size of the animation, and a user who set this preference has told us already.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

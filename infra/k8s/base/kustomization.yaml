@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: interop
+
+commonLabels:
+  app.kubernetes.io/part-of: health-interop-lab
+
+resources:
+  - namespace.yaml
+  - networkpolicy.yaml
+  - hl7-ingest.yaml
+  - fhir-mapper.yaml
+  - patient-gateway.yaml
+  - claims-edi.yaml
+  - console.yaml

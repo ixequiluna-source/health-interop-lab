@@ -1,0 +1,43 @@
+@let env = environment;
+
+<!--
+  A skip link, first in the tab order.
+
+  Every route in this console puts a search box or a filter bar above its content, so a
+  keyboard user without this tabs through the whole masthead and navigation on every
+  navigation. It is visually hidden until focused, which is the only reason it is acceptable
+  to have a link nobody sees.
+-->
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<header class="masthead">
+  <div class="masthead__brand">
+    <span class="masthead__title">Interop console</span>
+    <!--
+      The environment label is on screen at all times so a screenshot in a bug report is
+      self-identifying. "It showed the wrong patient" is a different conversation when the
+      screenshot says `local · in-memory`, and that ambiguity costs real time.
+    -->
+    <span class="masthead__env" title="Data source for this build">{{ env.label }}</span>
+  </div>
+
+  <nav class="masthead__nav" aria-label="Primary">
+    <a
+      routerLink="/patients"
+      routerLinkActive="is-active"
+      [routerLinkActiveOptions]="{ exact: false }"
+      ariaCurrentWhenActive="page"
+      >Patients</a
+    >
+    <a routerLink="/pipeline" routerLinkActive="is-active" ariaCurrentWhenActive="page">Pipeline</a>
+  </nav>
+</header>
+
+<!--
+  `tabindex="-1"` makes the target focusable programmatically without adding it to the tab
+  order, which is what the skip link needs: without it, some browsers move the viewport but
+  leave focus behind in the header, and the next Tab returns to the navigation.
+-->
+<main id="main" class="main" tabindex="-1">
+  <router-outlet />
+</main>

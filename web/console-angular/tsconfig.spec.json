@@ -1,0 +1,10 @@
+/* Test configuration. `src/testing` holds fakes and helpers shared across specs; it is
+   listed here and excluded from tsconfig.app.json so it is compiled for tests only. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec",
+    "types": ["vitest/globals"]
+  },
+  "include": ["src/**/*.d.ts", "src/**/*.spec.ts", "src/testing/**/*.ts"]
+}

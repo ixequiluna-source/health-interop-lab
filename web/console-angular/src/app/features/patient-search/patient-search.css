@@ -1,0 +1,269 @@
+:host {
+  display: block;
+}
+
+.page-title {
+  font-size: 1.5rem;
+}
+
+.page-lede {
+  margin: var(--space-2) 0 var(--space-5);
+  color: var(--text-secondary);
+  max-width: 44rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.filters__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 9rem;
+}
+
+.filters__field--grow {
+  /* `min-width: 0` is required or the flex item refuses to shrink below the input's
+     intrinsic width and the row overflows on narrow viewports. */
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.filters__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.filters__input {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  width: 100%;
+}
+
+.filters__input:hover {
+  border-color: var(--text-muted);
+}
+
+/* Mirrors the invalid state the control exposes to assistive technology, so the two agree.
+   Colour is not the only signal: the hint text below states the rule at all times. */
+.filters__input[aria-invalid='true'] {
+  border-color: var(--status-degraded);
+}
+
+.filters__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.results {
+  margin-top: var(--space-6);
+}
+
+.results__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.results__heading {
+  font-size: 1rem;
+}
+
+.results__count {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.results__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  text-decoration: none;
+  color: inherit;
+}
+
+a.result:hover {
+  background: var(--surface-hover);
+}
+
+.result__name {
+  font-weight: 500;
+}
+
+.result__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.result__mrn {
+  font-family: var(--font-mono);
+}
+
+.result__sep {
+  color: var(--text-muted);
+}
+
+.results__more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+}
+
+.results__more-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.button {
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.button:disabled {
+  /* Reduced contrast plus `not-allowed`, and the label changes to "Loading…" — three
+     signals, because opacity alone is easy to miss and invisible in high-contrast modes. */
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.state {
+  margin: var(--space-5) 0 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.state--quiet {
+  color: var(--text-secondary);
+}
+
+.state--error {
+  border-color: var(--status-down);
+  background: var(--status-down-bg);
+}
+
+.state__title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.state__detail {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.state__trace {
+  margin: var(--space-3) 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.state__trace code {
+  font-family: var(--font-mono);
+  /* Trace ids are 32 hex characters and do not wrap at a sensible point on a phone;
+     `anywhere` is preferred over `break-all` so the browser still breaks at the container
+     edge rather than mid-token when there is room. */
+  overflow-wrap: anywhere;
+}
+
+.state--error .button {
+  margin-top: var(--space-2);
+}
+
+/* --- loading skeleton ------------------------------------------------------------------- */
+
+.result--skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* Matches the height of a real row, so the list does not resize when results land. */
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.skeleton {
+  display: block;
+  height: 0.8rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 0%,
+    var(--surface-hover) 50%,
+    var(--surface-sunken) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton--name {
+  width: 12rem;
+}
+
+.skeleton--meta {
+  width: 18rem;
+  max-width: 100%;
+  height: 0.7rem;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 40rem) {
+  .result {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

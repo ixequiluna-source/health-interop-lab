@@ -1,0 +1,231 @@
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/patients">Patient search</a>
+</nav>
+
+@switch (patientResource.status()) {
+  @case ('loading') {
+    <p class="state state--quiet" role="status">Loading patient record…</p>
+  }
+
+  @case ('reloading') {
+    <p class="state state--quiet" role="status">Reloading patient record…</p>
+  }
+
+  @case ('error') {
+    @if (isNotFound()) {
+      <div class="state state--quiet">
+        <h1 class="page-title">Patient not found</h1>
+        <p>
+          No patient in the index carries the medical record number
+          <code class="mono">{{ mrn() }}</code
+          >.
+        </p>
+        <p class="state__detail">
+          The index only contains patients an HL7 feed has admitted. A patient registered in another
+          system will not appear here until an ADT message arrives, and an MRN issued by a different
+          facility will never appear at all.
+        </p>
+        <a class="button" routerLink="/patients">Back to search</a>
+      </div>
+    } @else {
+      @let error = patientError();
+      <div class="state state--error" role="alert">
+        <p class="state__title">This record could not be loaded.</p>
+        <p class="state__detail">{{ error?.message }}</p>
+        @if (error?.traceId; as traceId) {
+          <p class="state__trace">
+            Trace <code>{{ traceId }}</code>
+          </p>
+        }
+        <button type="button" class="button" (click)="onRetryPatient()">Try again</button>
+      </div>
+    }
+  }
+
+  @default {
+    <!--
+      `@if (…; as patient)` rather than `hasValue()` plus a `@let`. `ResourceRef.hasValue()`
+      narrows through a `this` type predicate, which narrows the *resource* and not the
+      result of a later `value()` call — so in a template the value would still be
+      `Patient | undefined` and `strictTemplates` would reject every field access. The `as`
+      form binds the value once and narrows the binding, which is what is actually needed.
+    -->
+    @if (patientResource.value(); as patient) {
+      <header class="record-header">
+        <h1 class="page-title">{{ fullName(patient) }}</h1>
+        <p class="record-header__mrn">
+          <span class="visually-hidden">Medical record number </span>
+          <code class="mono">{{ patient.medicalRecordNumber }}</code>
+        </p>
+      </header>
+
+      <section aria-labelledby="demographics-heading" class="panel">
+        <h2 id="demographics-heading" class="panel__heading">Demographics</h2>
+
+        <!--
+          A description list, not a table. These are name/value pairs about one subject,
+          which is exactly what `<dl>` describes; a one-row table would announce column
+          headers that do not exist and force a grid navigation model onto four fields.
+        -->
+        <dl class="fields">
+          <div class="fields__row">
+            <dt>Date of birth</dt>
+            <!--
+              Rendered as the sender transmitted it, with no date pipe.
+
+              HL7 permits partial dates, and the ingest service widens rather than pads them:
+              `1974` stays `1974`. Passing that through a date formatter produces
+              "1 January 1974" — a birthday this system was never told, which then looks
+              authoritative on screen and gets copied into somewhere it matters. Paediatric
+              dosing downstream is computed from dates like this one.
+            -->
+            <dd>{{ patient.birthDate || 'Not recorded' }}</dd>
+          </div>
+          <div class="fields__row">
+            <dt>Administrative sex</dt>
+            <dd>
+              @if (patient.administrativeSex) {
+                {{ administrativeSexLabel(patient.administrativeSex) }}
+                <span class="fields__code">({{ patient.administrativeSex }})</span>
+              } @else {
+                Not recorded
+              }
+            </dd>
+          </div>
+          <div class="fields__row">
+            <dt>Last updated</dt>
+            <!--
+              A full timestamp is safe to format: `lastUpdated` is a
+              `google.protobuf.Timestamp`, which is always a complete instant. It is rendered
+              in the viewer's local zone, which is the right default for an operator working
+              a shift — and the reason the *encounter* times below are labelled with their
+              zone rather than left ambiguous.
+            -->
+            <dd>{{ patient.lastUpdated | date: 'medium' }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section aria-labelledby="identifiers-heading" class="panel">
+        <h2 id="identifiers-heading" class="panel__heading">Identifiers</h2>
+        @if (patient.identifiers.length === 0) {
+          <p class="panel__empty">No identifiers recorded.</p>
+        } @else {
+          <ul class="identifiers">
+            @for (id of patient.identifiers; track id.system + '|' + id.value) {
+              <li class="identifier">
+                <span class="identifier__system">{{ id.system }}</span>
+                <code class="mono">{{ id.value }}</code>
+                <span class="identifier__type" title="HL7 table 0203 identifier type">
+                  {{ id.type }}
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section aria-labelledby="encounters-heading" class="panel">
+        <div class="panel__header">
+          <h2 id="encounters-heading" class="panel__heading">Encounters</h2>
+          <!--
+            `hasValue()` first, and it is load-bearing rather than defensive.
+            `ResourceRef.value()` *throws* when the resource is in its error state — the
+            `defaultValue` only covers idle and loading. This count sits outside the
+            `@switch` below, so without the guard a failed encounter query throws during
+            change detection and takes the whole record page down, including the demographics
+            that loaded perfectly well.
+          -->
+          @if (encountersResource.hasValue() && encountersResource.value().length > 0) {
+            <p class="panel__count">
+              {{ encountersResource.value().length }} recorded, newest first
+            </p>
+          }
+        </div>
+
+        <!--
+          The encounter list has its own status, independent of the demographics above. A
+          timed-out visit query still leaves a usable header with a name and an MRN, which is
+          frequently all the operator came for.
+        -->
+        @switch (encountersResource.status()) {
+          @case ('loading') {
+            <p class="panel__empty" role="status">Loading encounters…</p>
+          }
+          @case ('error') {
+            @let encError = encountersError();
+            <div class="state state--error" role="alert">
+              <p class="state__title">Encounters could not be loaded.</p>
+              <p class="state__detail">{{ encError?.message }}</p>
+              @if (encError?.traceId; as traceId) {
+                <p class="state__trace">
+                  Trace <code>{{ traceId }}</code>
+                </p>
+              }
+              <button type="button" class="button" (click)="onRetryEncounters()">Try again</button>
+            </div>
+          }
+          @default {
+            @if (encountersResource.value().length === 0) {
+              <p class="panel__empty">
+                No encounters recorded for this patient.
+                <span class="state__detail">
+                  A patient can exist in the index from an A28 registration with no admission behind
+                  it.
+                </span>
+              </p>
+            } @else {
+              <ol class="encounters">
+                @for (encounter of encountersResource.value(); track encounter.visitNumber) {
+                  <li class="encounter">
+                    <div class="encounter__head">
+                      <span
+                        class="encounter__class"
+                        [attr.data-class]="encounter.patientClass"
+                        [title]="patientClassLabel(encounter.patientClass)"
+                      >
+                        {{ patientClassLabel(encounter.patientClass) }}
+                      </span>
+                      <!--
+                        `datetime` carries the machine-readable instant while the element's
+                        text carries the formatted one. `timeZone` is rendered explicitly:
+                        an admission time with no zone shown is the single most reliable way
+                        to make an overnight admission look like it happened on the wrong
+                        day, and this pipeline carries messages from senders in more than
+                        one offset.
+                      -->
+                      <time class="encounter__time" [attr.datetime]="encounter.admittedAt">
+                        {{ encounter.admittedAt | date: 'medium' }}
+                        <span class="encounter__tz">{{ encounter.admittedAt | date: 'zzzz' }}</span>
+                      </time>
+                    </div>
+                    <dl class="fields fields--inline">
+                      <div class="fields__row">
+                        <dt>Visit</dt>
+                        <dd>
+                          <code class="mono">{{ encounter.visitNumber }}</code>
+                        </dd>
+                      </div>
+                      <div class="fields__row">
+                        <dt>Location</dt>
+                        <dd>{{ locationLabel(encounter) }}</dd>
+                      </div>
+                      <div class="fields__row">
+                        <dt>Facility</dt>
+                        <dd>{{ encounter.location.facility || 'Not recorded' }}</dd>
+                      </div>
+                      <div class="fields__row">
+                        <dt>Attending</dt>
+                        <dd>{{ encounter.attendingClinician || 'Not recorded' }}</dd>
+                      </div>
+                    </dl>
+                  </li>
+                }
+              </ol>
+            }
+          }
+        }
+      </section>
+    }
+  }
+}

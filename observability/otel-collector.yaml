@@ -1,0 +1,172 @@
+# OpenTelemetry Collector for the interoperability platform.
+#
+# Five services in five languages speak OTLP to this one process. That is the practical
+# argument for OpenTelemetry in a polyglot system: changing the observability backend is a
+# change to this file, not five separate vendor SDK migrations.
+#
+# The redaction processors below are the part that matters in a clinical system. Traces leave
+# the audited boundary — they go to a vendor, they are retained on a different schedule, and
+# far more people can read them than can read the clinical store. A patient name that reaches
+# a span attribute is a disclosure through a channel nobody classified as PHI.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+        # Bound the payload: an unbounded receiver is a memory-exhaustion vector reachable
+        # from anything that can open a connection to the collector.
+        max_recv_msg_size_mib: 8
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # memory_limiter must be FIRST in every pipeline. Its job is to reject data before the
+  # batcher accumulates it; placed after batch, it watches a queue that has already grown.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 20
+
+  # Drop attributes that carry patient identity.
+  #
+  # `delete` rather than `hash`: a hashed MRN is still a stable per-patient identifier, so it
+  # re-identifies anyone who can correlate it with a second dataset. The services are written
+  # not to set these in the first place; this processor is the backstop for a future span
+  # attribute added without that context.
+  attributes/redact-phi:
+    actions:
+      - key: patient.mrn
+        action: delete
+      - key: patient.name
+        action: delete
+      - key: patient.family_name
+        action: delete
+      - key: patient.given_name
+        action: delete
+      - key: patient.birth_date
+        action: delete
+      - key: search.term
+        action: delete
+      - key: hl7.raw_message
+        action: delete
+      - key: edi.raw_interchange
+        action: delete
+      # db.statement can embed a query filter containing a patient name.
+      - key: db.statement
+        action: delete
+
+  # URLs reach the collector as attributes, and a page token or query string in a URL is the
+  # same disclosure by another route.
+  redaction/urls:
+    allow_all_keys: true
+    blocked_values:
+      - "[Mm][Rr][Nn]-[0-9]+"
+      - "(?i)(page_token|pageToken|query|q)=[^&\\s]+"
+    summary: silent
+
+  resourcedetection:
+    detectors: [env, system, gcp]
+    timeout: 5s
+    override: false
+
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+    send_batch_max_size: 1024
+
+  # Tail sampling, not head sampling, for the decision that matters.
+  #
+  # Head sampling throws away 90% of traces before knowing whether they are interesting.
+  # Tail sampling keeps every error and every slow trace and samples the rest — so the trace
+  # you actually go looking for is the one that survived.
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 50000
+    expected_new_traces_per_sec: 200
+    policies:
+      - name: errors-always
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: slow-always
+        type: latency
+        latency:
+          threshold_ms: 1000
+      - name: rejected-messages-always
+        type: string_attribute
+        string_attribute:
+          key: hl7.ack_code
+          values: [AE, AR]
+      - name: baseline
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 5
+
+exporters:
+  otlp/backend:
+    endpoint: ${env:OTLP_BACKEND_ENDPOINT}
+    headers:
+      # Read from the environment, which is populated from a Kubernetes Secret. Never inline.
+      authorization: ${env:OTLP_BACKEND_AUTH}
+    tls:
+      insecure: false
+    # A backpressured or unavailable backend must never block a clinical service.
+    sending_queue:
+      enabled: true
+      num_consumers: 10
+      queue_size: 5000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: false
+
+  debug:
+    verbosity: basic
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  zpages:
+    endpoint: 127.0.0.1:55679
+
+service:
+  extensions: [health_check, zpages]
+
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - attributes/redact-phi
+        - redaction/urls
+        - tail_sampling
+        - batch
+      exporters: [otlp/backend]
+
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [prometheus]
+
+    logs:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - attributes/redact-phi
+        - batch
+      exporters: [otlp/backend]
+
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      level: detailed

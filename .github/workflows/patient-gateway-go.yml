@@ -1,0 +1,63 @@
+name: patient-gateway (Go)
+
+on:
+  push:
+    paths:
+      - "services/patient-gateway-go/**"
+      - "proto/**"
+      - ".github/workflows/patient-gateway-go.yml"
+  pull_request:
+    paths:
+      - "services/patient-gateway-go/**"
+      - "proto/**"
+      - ".github/workflows/patient-gateway-go.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/patient-gateway-go
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: services/patient-gateway-go/go.mod
+
+      - uses: arduino/setup-protoc@v3
+        with:
+          version: "28.3"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Generated code is produced here rather than committed. The trade-off is deliberate:
+      # committing it makes the diff readable, generating it makes it impossible for the
+      # checked-in stubs to drift from the .proto they claim to describe.
+      - name: Install protobuf plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.5
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+
+      - name: Generate protobuf stubs
+        run: make proto
+
+      # The module has no committed go.sum: the environment this was authored in had no
+      # access to the Go module proxy. `go mod tidy` resolves and verifies here.
+      - name: Resolve dependencies
+        run: go mod tidy
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -race -coverprofile=coverage.out ./...
+
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1

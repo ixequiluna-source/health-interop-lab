@@ -1,0 +1,44 @@
+name: hl7-ingest (Java)
+
+on:
+  push:
+    paths:
+      - "services/hl7-ingest-java/**"
+      - ".github/workflows/hl7-ingest-java.yml"
+  pull_request:
+    paths:
+      - "services/hl7-ingest-java/**"
+      - ".github/workflows/hl7-ingest-java.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/hl7-ingest-java
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # `verify` rather than `test`: the JaCoCo coverage gate binds to the verify phase, so
+      # running only `test` would report coverage and enforce nothing.
+      - name: Build, test and enforce coverage
+        run: mvn -B --no-transfer-progress verify
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hl7-ingest-test-results
+          path: |
+            services/hl7-ingest-java/target/surefire-reports
+            services/hl7-ingest-java/target/site/jacoco
+          if-no-files-found: ignore

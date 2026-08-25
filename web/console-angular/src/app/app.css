@@ -1,0 +1,93 @@
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: calc(-1 * var(--space-7));
+  z-index: 10;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  /* Animated into view rather than teleported, so it does not read as a rendering glitch
+     when it appears. Suppressed under `prefers-reduced-motion` by the global rule. */
+  transition: top 120ms ease-out;
+}
+
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.masthead__brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-right: auto;
+}
+
+.masthead__title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.masthead__env {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+}
+
+.masthead__nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.masthead__nav a {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.masthead__nav a:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.masthead__nav a.is-active {
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.main {
+  /* The outlet's own focus ring would trace the entire page; the skip link's target does not
+     need to be outlined, only focused. */
+  outline: none;
+  padding: var(--space-6) var(--space-5) var(--space-7);
+  max-width: 68rem;
+  margin: 0 auto;
+}
+
+@media (max-width: 40rem) {
+  .main {
+    padding: var(--space-5) var(--space-4) var(--space-6);
+  }
+}

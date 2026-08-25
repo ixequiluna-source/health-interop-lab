@@ -1,0 +1,243 @@
+<h1 class="page-title">Patient search</h1>
+<p class="page-lede">
+  Matches family name, given name and identifiers across the patient index the FHIR mapper
+  maintains. Search is diacritic-insensitive — <em>Nunez</em> finds <em>Núñez</em>.
+</p>
+
+<form class="filters" [formGroup]="filters" (submit)="$event.preventDefault()">
+  <!--
+    `submit` is prevented rather than handled. The search runs on input, so there is no
+    submit action to perform — but the form element is still the right container, because it
+    gives the fields an accessible grouping and gives the browser its autofill and
+    reset semantics. Without the handler, Enter in the text field triggers a full page
+    navigation and the SPA reloads.
+  -->
+  <div class="filters__field filters__field--grow">
+    <label class="filters__label" for="search-term">Name or identifier</label>
+    <input
+      id="search-term"
+      type="search"
+      formControlName="term"
+      class="filters__input"
+      placeholder="e.g. García, MRN-88213, NSS-4471120"
+      autocomplete="off"
+      spellcheck="false"
+      [attr.aria-invalid]="filters.controls.term.invalid ? 'true' : null"
+      aria-describedby="search-term-hint"
+    />
+    <!--
+      Permanently present rather than rendered only on error. A description that appears and
+      disappears is re-announced by screen readers as a change, and the hint is useful
+      before the operator has typed anything wrong.
+    -->
+    <p id="search-term-hint" class="filters__hint">
+      At least {{ minQueryLength }} characters. Names are never placed in the URL.
+    </p>
+  </div>
+
+  <div class="filters__field">
+    <label class="filters__label" for="page-size">Results per page</label>
+    <select id="page-size" formControlName="pageSize" class="filters__input">
+      <!--
+        `ngValue`, not `value`. A DOM `<option>`'s value is a string, so `[value]="size"`
+        writes the string "25" into a `FormControl<number>` — the types say number, the
+        runtime holds a string, and nothing fails until it reaches the gateway as
+        `"pageSize": "25"` and the server rejects the request. `ngValue` keeps the original
+        value in the accessor's map and hands back the number.
+      -->
+      @for (size of pageSizeOptions; track size) {
+        <option [ngValue]="size">{{ size }}</option>
+      }
+    </select>
+  </div>
+</form>
+
+<!--
+  The live region.
+
+  `role="status"` (an implicit `aria-live="polite"`) so an update waits for a pause rather
+  than interrupting — which matters here because the region changes on every debounce tick
+  and an assertive region would cut the operator off mid-word as they type.
+
+  It is present in the DOM unconditionally and only its text changes. A live region that is
+  added to the page at the same moment it gains content is frequently not announced at all:
+  the assistive technology has to be observing the node before the mutation happens.
+
+  It is visually hidden because the same counts are already on screen for sighted users, in
+  the results header below. Announcing them twice is the alternative, and it is worse.
+-->
+<p class="visually-hidden" role="status">{{ store.resultSummary() }}</p>
+
+<section class="results" aria-labelledby="results-heading">
+  <div class="results__header">
+    <h2 id="results-heading" class="results__heading">Results</h2>
+    @if (store.phase() === 'ready' && store.totalMatched() > 0) {
+      <p class="results__count">
+        {{ store.patients().length }} of {{ store.totalMatched() }} matched
+      </p>
+    }
+  </div>
+
+  @switch (store.phase()) {
+    @case ('idle') {
+      <p class="state state--quiet">Start typing to search the patient index.</p>
+    }
+
+    @case ('too-short') {
+      <p class="state state--quiet">
+        Enter at least {{ minQueryLength }} characters.
+        <span class="state__detail">
+          A one-character search matches most of the index, which is a bulk disclosure rather than a
+          query.
+        </span>
+      </p>
+    }
+
+    @case ('loading') {
+      <!--
+        Skeleton rows rather than a spinner, and the same number of them each time. A
+        spinner communicates "something is happening"; a skeleton also communicates what is
+        about to arrive and reserves its height, so the page does not jump when it does.
+        `aria-hidden` because this conveys nothing to a screen reader that the live region
+        has not already said better.
+      -->
+      <ul class="results__list" aria-hidden="true">
+        @for (row of [1, 2, 3, 4, 5]; track row) {
+          <li class="result result--skeleton">
+            <span class="skeleton skeleton--name"></span>
+            <span class="skeleton skeleton--meta"></span>
+          </li>
+        }
+      </ul>
+    }
+
+    @case ('error') {
+      @let error = store.error();
+      <div class="state state--error" role="alert">
+        <p class="state__title">
+          @switch (error?.kind) {
+            @case ('network') {
+              The gateway could not be reached.
+            }
+            @case ('unavailable') {
+              The gateway is not answering right now.
+            }
+            @case ('invalid-request') {
+              That search could not be run.
+            }
+            @default {
+              The search failed.
+            }
+          }
+        </p>
+        <p class="state__detail">{{ error?.message }}</p>
+
+        @if (error?.traceId; as traceId) {
+          <!--
+            The trace id, on screen, copyable.
+
+            This is the payoff for the trace interceptor. An operator reporting a problem can
+            hand over this string, and whoever owns the backend has the exact span tree —
+            console through proxy, gateway and Mongo — instead of a timestamp and a
+            description of the symptom.
+          -->
+          <p class="state__trace">
+            Trace <code>{{ traceId }}</code>
+          </p>
+        }
+
+        <!--
+          Retry is offered only where retrying can succeed. `invalid-request` means the
+          request as written will never be accepted — a stale page token, a query the server
+          considers too short — and a retry button on it produces the same failure while
+          implying the operator did something wrong by not pressing it enough.
+        -->
+        @if (error?.kind !== 'invalid-request') {
+          <button type="button" class="button" (click)="onRetry()">Try again</button>
+        }
+      </div>
+    }
+
+    @default {
+      <!--
+        `ready` and `loading-more` share this branch: `loading-more` keeps the existing rows
+        on screen and only changes the state of the button at the bottom. Blanking a list
+        the operator is reading in order to append to it loses their place.
+      -->
+      @if (store.patients().length === 0) {
+        <p class="state state--quiet">
+          No patients matched <strong>{{ store.term() }}</strong
+          >.
+          <span class="state__detail">
+            The index only contains patients an HL7 feed has admitted. A patient registered
+            elsewhere will not appear here until an ADT message arrives.
+          </span>
+        </p>
+      } @else {
+        <!--
+          Results are a list of links, not a table or an ARIA grid.
+
+          Each row is a single navigable target, and an anchor is already keyboard-operable,
+          announced with its role, and openable in a new tab by the browser's own means. A
+          `role="grid"` with managed roving tabindex would be more machinery to arrive at
+          something worse for this shape of data.
+        -->
+        <ul class="results__list">
+          @for (patient of store.patients(); track patient.medicalRecordNumber) {
+            <li>
+              <a
+                #resultRow
+                class="result"
+                [routerLink]="['/patients', patient.medicalRecordNumber]"
+              >
+                <span class="result__name">{{ fullName(patient) }}</span>
+                <span class="result__meta">
+                  <span class="result__mrn">{{ patient.medicalRecordNumber }}</span>
+                  <span class="result__sep" aria-hidden="true">·</span>
+                  <span>
+                    <span class="visually-hidden">Born </span>{{ patient.birthDate || 'unknown' }}
+                  </span>
+                  <span class="result__sep" aria-hidden="true">·</span>
+                  <span>
+                    <!--
+                      Spelled out for assistive technology. "M" alone is read as the letter,
+                      and HL7 table 0001 is not general knowledge outside this building.
+                    -->
+                    <span class="visually-hidden">Administrative sex </span
+                    >{{ patient.administrativeSex || '—' }}
+                  </span>
+                </span>
+              </a>
+            </li>
+          }
+        </ul>
+
+        @if (store.hasMore()) {
+          <div class="results__more">
+            <button
+              type="button"
+              class="button"
+              [disabled]="!store.canLoadMore()"
+              (click)="onLoadMore()"
+            >
+              @if (store.phase() === 'loading-more') {
+                Loading…
+              } @else {
+                Load next {{ filters.controls.pageSize.value }}
+              }
+            </button>
+            <!--
+              Cursor pagination, so there is no page number and no "jump to page 7". The
+              server hands back an opaque token for the next slice and nothing else; it is
+              stated on screen because an operator who expects numbered pages should find out
+              why they are absent rather than assume the control is missing.
+            -->
+            <p class="results__more-note">
+              Paged by cursor — results stay consistent as new admissions arrive.
+            </p>
+          </div>
+        }
+      }
+    }
+  }
+</section>

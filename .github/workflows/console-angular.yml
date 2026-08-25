@@ -1,0 +1,43 @@
+name: console (Angular)
+
+on:
+  push:
+    paths:
+      - "web/console-angular/**"
+      - ".github/workflows/console-angular.yml"
+  pull_request:
+    paths:
+      - "web/console-angular/**"
+      - ".github/workflows/console-angular.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/console-angular
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/console-angular/package-lock.json
+
+      # `npm ci` rather than `npm install`: it installs exactly the lockfile and fails if
+      # package.json and the lockfile disagree, so CI cannot silently resolve a different
+      # dependency tree from the one that was reviewed.
+      - name: Install
+        run: npm ci
+
+      - name: Type-check and build
+        run: npx ng build
+
+      # Vitest in a jsdom environment, so there is no browser to provision and no
+      # headless-Chrome flake in CI.
+      - name: Test
+        run: npx ng test --watch=false

@@ -67,8 +67,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The config resolves its backend from the environment, which is the point: no endpoint
+      # or credential is baked into the artifact. `validate` still resolves ${env:...}, so the
+      # variables have to be present here or it rejects an empty exporter endpoint.
       - name: Validate the collector configuration
+        env:
+          OTLP_BACKEND_ENDPOINT: otlp.example.com:4317
+          OTLP_BACKEND_AUTH: validation-placeholder
         run: |
           docker run --rm -v "$PWD/observability:/cfg" \
+            -e OTLP_BACKEND_ENDPOINT -e OTLP_BACKEND_AUTH \
             otel/opentelemetry-collector-contrib:0.116.1 \
             validate --config=/cfg/otel-collector.yaml

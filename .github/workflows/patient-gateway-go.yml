@@ -56,8 +56,8 @@ jobs:
       - name: Build
         run: go build ./...
 
+      # No -coverprofile: writing one invokes the `covdata` tool, which is absent from the
+      # runner's toolchain and fails every package before a single test runs. -race is the
+      # part that earns its keep here anyway.
       - name: Test
-        run: go test -race -coverprofile=coverage.out ./...
-
-      - name: Coverage summary
-        run: go tool cover -func=coverage.out | tail -1
+        run: go test -race ./...

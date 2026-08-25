@@ -102,8 +102,12 @@ fun main() {
     // The hook then waits. Returning immediately would let the JVM exit while the loop is still
     // committing, which loses the final commit and reprocesses that batch on the next start — and,
     // worse, skips the LeaveGroup, so the group stalls for a full session timeout on every deploy.
+    // The thread is named through the Thread constructor, not a second argument to
+    // addShutdownHook: that method takes a Thread and nothing else. The name matters because an
+    // unnamed hook shows up in a thread dump as Thread-N, which is useless at exactly the moment
+    // you are trying to work out why a pod is not terminating.
     Runtime.getRuntime().addShutdownHook(
-        Thread {
+        Thread({
             log.info("shutdown.signal_received")
             admissionConsumer.stop()
             if (!stopped.await(config.shutdownTimeoutMillis, TimeUnit.MILLISECONDS)) {
@@ -113,8 +117,7 @@ fun main() {
             dlqProducer.close(Duration.ofMillis(config.shutdownTimeoutMillis))
             mongoClient.close()
             log.info("shutdown.complete")
-        },
-        "shutdown",
+        }, "shutdown"),
     )
 
     try {

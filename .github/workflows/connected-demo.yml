@@ -1,0 +1,61 @@
+name: connected synthetic demo
+on:
+  push:
+    paths: ['services/patient-gateway-go/**', 'web/console-angular/**', 'proto/**', 'tools/connected-demo.cjs', '.github/workflows/connected-demo.yml']
+  pull_request:
+    paths: ['services/patient-gateway-go/**', 'web/console-angular/**', 'proto/**', 'tools/connected-demo.cjs', '.github/workflows/connected-demo.yml']
+permissions:
+  contents: read
+jobs:
+  connected:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/patient-gateway-go/go.mod
+          cache-dependency-path: services/patient-gateway-go/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/console-angular/package-lock.json
+      - uses: arduino/setup-protoc@v3
+        with:
+          version: '28.3'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate and test gateway
+        working-directory: services/patient-gateway-go
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.5
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+          make proto
+          go mod download
+          go test -race ./...
+          go build -o /tmp/patient-gateway .
+          go build -o /tmp/console-edge ./cmd/console-edge
+      - name: Install console and browser
+        working-directory: web/console-angular
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Exercise the real connected demo
+        run: |
+          /tmp/patient-gateway > /tmp/gateway.log 2>&1 &
+          /tmp/console-edge > /tmp/edge.log 2>&1 &
+          cd web/console-angular
+          npm run start:connected -- --host 127.0.0.1 > /tmp/console.log 2>&1 &
+          cd ../..
+          NODE_PATH="$PWD/web/console-angular/node_modules" node tools/connected-demo.cjs
+      - name: Preserve synthetic demo evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: connected-demo-evidence
+          path: |
+            artifacts/
+            /tmp/console.log
+            /tmp/gateway.log
+            /tmp/edge.log

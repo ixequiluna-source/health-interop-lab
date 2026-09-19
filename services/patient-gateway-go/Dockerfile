@@ -1,16 +1,16 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.24-alpine AS build
+FROM golang:1.25-alpine AS build
 RUN apk add --no-cache protobuf-dev make git
 WORKDIR /build
 
-COPY services/patient-gateway-go/go.mod ./
+COPY services/patient-gateway-go/go.mod services/patient-gateway-go/go.sum ./
 COPY proto ../../proto
 COPY services/patient-gateway-go/ ./
 
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.5 \
     && go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1 \
     && make proto \
-    && go mod tidy
+    && go mod download
 # Static binary with no debug symbols: nothing in the runtime image to link against, and a
 # smaller attack surface than shipping a toolchain-linked binary.
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/patient-gateway .

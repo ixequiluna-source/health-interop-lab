@@ -1,0 +1,10 @@
+{
+  "/interop.v1.PatientService/**": {
+    "target": "http://127.0.0.1:8084",
+    "secure": false
+  },
+  "/ops/**": {
+    "target": "http://127.0.0.1:8084",
+    "secure": false
+  }
+}

@@ -26,8 +26,8 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
-          cache-dependency-path: services/patient-gateway-go/go.mod
+          go-version-file: services/patient-gateway-go/go.mod
+          cache-dependency-path: services/patient-gateway-go/go.sum
 
       - uses: arduino/setup-protoc@v3
         with:
@@ -48,7 +48,9 @@ jobs:
       # The module has no committed go.sum: the environment this was authored in had no
       # access to the Go module proxy. `go mod tidy` resolves and verifies here.
       - name: Resolve dependencies
-        run: go mod tidy
+        run: go mod download
+      - name: Verify dependency checksums
+        run: go mod verify
 
       - name: Vet
         run: go vet ./...

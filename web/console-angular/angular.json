@@ -55,6 +55,17 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "connected": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.connected.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -67,6 +78,10 @@
             },
             "development": {
               "buildTarget": "console-angular:build:development"
+            },
+            "connected": {
+              "buildTarget": "console-angular:build:connected",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

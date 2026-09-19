@@ -29,7 +29,7 @@
 -->
 <p class="visually-hidden" role="status">
   @if (statusResource.hasValue()) {
-    Pipeline {{ healthLabel(overall()) }}. {{ totalFailed() }} failed messages across the pipeline.
+    Pipeline {{ healthLabel(overall()) }}. {{ totalFailed() }} failed messages in the available counters; unmeasured services are excluded.
   }
 </p>
 
@@ -109,7 +109,7 @@
               different claim.
             -->
             <p class="service__no-counters">
-              No message counters — this service does not own a message disposition.
+              No message counters available for this service.
             </p>
           }
 

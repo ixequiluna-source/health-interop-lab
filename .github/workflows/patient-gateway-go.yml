@@ -45,8 +45,7 @@ jobs:
       - name: Generate protobuf stubs
         run: make proto
 
-      # The module has no committed go.sum: the environment this was authored in had no
-      # access to the Go module proxy. `go mod tidy` resolves and verifies here.
+      # Resolve only committed versions and verify their recorded checksums.
       - name: Resolve dependencies
         run: go mod download
       - name: Verify dependency checksums

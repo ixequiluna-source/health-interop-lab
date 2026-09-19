@@ -29,7 +29,12 @@
 -->
 <p class="visually-hidden" role="status">
   @if (statusResource.hasValue()) {
-    Pipeline {{ healthLabel(overall()) }}. {{ totalFailed() }} failed messages in the available counters; unmeasured services are excluded.
+    Pipeline {{ healthLabel(overall()) }}.
+    @if (hasCounters()) {
+      {{ totalFailed() }} failed messages in the available counters; unmeasured services are excluded.
+    } @else {
+      Message counters unavailable; no failure total can be established.
+    }
   }
 </p>
 

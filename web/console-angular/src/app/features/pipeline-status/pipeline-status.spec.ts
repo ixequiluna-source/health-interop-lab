@@ -167,7 +167,8 @@ describe('PipelineStatusPage', () => {
     // today", which is a materially different claim.
     expect(element.querySelector('.counters')).toBeNull();
     expect(element.textContent).toContain('No message counters available');
-    expect(element.textContent).toContain('unmeasured services are excluded');
+    expect(element.textContent).toContain('no failure total can be established');
+    expect(element.textContent).not.toContain('0 failed messages');
   });
 
   it('excludes rejected messages from the failure rollup', async () => {

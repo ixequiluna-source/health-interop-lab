@@ -22,6 +22,6 @@ npm test -- --watch=false
 npm run build
 ```
 
-The production build switches to HttpPatientGateway. It requires an HTTP/Connect-compatible adapter with the expected query and operations endpoints; the Go gRPC listener alone does not satisfy this contract. Do not serve the production bundle as if it were the standalone synthetic demo.
+The production build switches to HttpPatientGateway. It requires an HTTP/Connect-compatible adapter with the expected query and operations endpoints; the Go gRPC listener alone does not satisfy this contract. The repository includes this JSON subset in `services/patient-gateway-go/cmd/console-edge`. Use `npm run start:connected` with the gateway and edge running; see [connected demo instructions](../../docs/CONNECTED-DEMO.md). The default development demo remains in-memory.
 
 Tests live beside their components, stores and adapters. The test gateway can control responses to exercise stale-request handling and pagination.

@@ -32,7 +32,7 @@ Abre **http://localhost:4200**. El modo de desarrollo usa datos sintéticos en m
 
 ## Qué falta para una integración completa
 
-El cliente HTTP de la consola requiere un adaptador compatible delante del servicio gRPC. El worker de reclamaciones recibe archivos JSON con cargos; no consulta directamente el gateway. Estas conexiones no se presentan como implementadas ni probadas de extremo a extremo.
+La consola ya incluye un adaptador HTTP delante del servicio gRPC. La [demo conectada reproducible](docs/CONNECTED-DEMO.md) recorre búsqueda, detalle y encuentros con datos sintéticos. El worker de reclamaciones recibe archivos JSON con cargos; no consulta directamente el gateway. La ingestión HL7 hasta la consola y la entrega de reclamaciones siguen pendientes de una prueba integrada.
 
 Consulta los [límites y evidencias de la revisión](docs/REVIEW-2026-09-19.md). Las pruebas de controles no constituyen certificación SOC 2 ni validación para uso clínico. No se despliega infraestructura al explorar la consola.
 

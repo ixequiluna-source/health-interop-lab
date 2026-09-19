@@ -60,7 +60,7 @@ flowchart LR
   Claims --> SQS[SQS FIFO]
 ```
 
-Solid paths describe implemented component interfaces; this diagram is not proof of a deployed end-to-end environment. The console-to-gRPC adapter and upstream assembly of claim files remain integration work.
+Solid paths describe implemented component interfaces; this diagram is not proof of a deployed end-to-end environment. The console can now reach gRPC through the bounded HTTP adapter. Upstream assembly of claim files remains integration work. Follow the [connected synthetic demo](docs/CONNECTED-DEMO.md) for the executable browser-to-service journey.
 
 ## Evidence over adjectives
 

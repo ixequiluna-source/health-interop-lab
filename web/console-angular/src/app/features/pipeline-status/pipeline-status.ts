@@ -92,6 +92,7 @@ export class PipelineStatusPage {
   );
 
   protected readonly overall = computed(() => worstHealth(this.services()));
+  protected readonly hasCounters = computed(() => this.services().some(service => service.counters !== null));
 
   protected readonly error = computed(() => {
     const error = this.statusResource.error();

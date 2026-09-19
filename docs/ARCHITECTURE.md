@@ -15,7 +15,7 @@
 
 ## Connections not established by this repository
 
-The Go entry point serves gRPC. The browser client expects an HTTP/Connect-compatible adapter, including a unary encounter-list operation and operations status endpoint. Those requirements must be implemented and tested before calling the production console a connected application.
+The Go entry point serves gRPC. The browser client expects an HTTP/Connect-compatible adapter, including a unary encounter-list operation and operations status endpoint. The repository now supplies that JSON subset in `cmd/console-edge`: bounded unary requests, aggregation of the encounter stream, and measured gateway health. Follow [the connected demo](CONNECTED-DEMO.md). This is a synthetic local integration, not a complete Connect server or production deployment.
 
 The claims worker receives files rather than calling the Go service. Upstream enrichment with charges and delivery into its input directory must be specified separately.
 

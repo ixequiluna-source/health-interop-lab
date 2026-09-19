@@ -1,153 +1,87 @@
-# health-interop-lab
+![Health Interop Lab — clinical systems reference implementation](docs/assets/cover.svg)
 
-A polyglot, event-driven clinical interoperability platform. One pipeline, five languages,
-each doing the job it is actually good at — plus the infrastructure, observability and
-compliance controls that a system holding protected health information needs in order to run.
+# Health Interop Lab
 
-This exists as a working reference implementation rather than a set of exercises. Every claim
-below is backed by code, tests and a CI job.
+**Clinical messages cross systems. Their meaning should survive the trip.**
 
----
+A polyglot engineering lab for exploring HL7 ingestion, FHIR projections, patient queries and X12 claim generation. Built around the hard parts: acknowledgement timing, stale events, malformed envelopes and predictable failure handling.
 
-## The pipeline
+[Start locally](#start-with-the-console) · [Architecture](docs/ARCHITECTURE.md) · [Engineering tour](docs/ENGINEERING-TOUR.md) · [Español](README.es.md) · [Ixequi Luna](https://ixequiluna.ai)
 
-```
-Hospital interface engine
-        │  HL7 v2 ADT^A01 over MLLP (TCP 2575)
-        ▼
-┌─────────────────────┐
-│  hl7-ingest         │  Java 21 · hand-written ER7 parser · MLLP framing · ACK semantics
-└──────────┬──────────┘
-           │  canonical AdmissionEvent (JSON), keyed by patient MRN
-           ▼
-      ╔═════════╗
-      ║  Kafka  ║  acks=all · idempotent producer · ordering per patient
-      ╚════╤════╝
-           ▼
-┌─────────────────────┐
-│  fhir-mapper        │  Kotlin · HL7 v2 → FHIR R4 · staleness guard · dead-letter sink
-└──────────┬──────────┘
-           │  read projection
-           ▼
-      ╔═════════╗
-      ║ MongoDB ║  patients + encounters, indexed for the queries below
-      ╚════╤════╝
-           ▼
-┌─────────────────────┐          ┌─────────────────────┐
-│  patient-gateway    │  gRPC    │  claims-edi         │  C# · EDI X12 837P → SQS FIFO
-│  Go · read-only     │◄─────────┤  .NET 8             │
-└──────────┬──────────┘          └─────────────────────┘
-           ▼
-┌─────────────────────┐
-│  console            │  Angular · signals · cursor pagination · OnPush
-└─────────────────────┘
+[![Java](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/hl7-ingest-java.yml/badge.svg)](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/hl7-ingest-java.yml)
+[![Kotlin](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/fhir-mapper-kotlin.yml/badge.svg)](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/fhir-mapper-kotlin.yml)
+[![Go](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/patient-gateway-go.yml/badge.svg)](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/patient-gateway-go.yml)
+[![C#](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/claims-edi-dotnet.yml/badge.svg)](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/claims-edi-dotnet.yml)
+[![Console](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/console-angular.yml/badge.svg)](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/console-angular.yml)
+[![Policy](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/policy.yml/badge.svg)](https://github.com/ixequiluna-source/health-interop-lab/actions/workflows/policy.yml)
 
-           every service ──── OTLP ───▶ OpenTelemetry Collector ──▶ backend
-                                        (PHI redaction, tail sampling)
+## Explore three engineering problems
+
+| Problem | Implementation to inspect | Why it is interesting |
+| --- | --- | --- |
+| A message looks valid, but its acknowledgement is wrong | [Java ingest](services/hl7-ingest-java) | ER7 parsing, MLLP framing and AA/AE/AR acknowledgement behavior. |
+| An older event arrives after a newer one | [Kotlin mapper](services/fhir-mapper-kotlin) | FHIR Patient/Encounter mapping, projection ordering and dead-letter handling. |
+| A plausible claim has an invalid envelope | [C# claims](services/claims-edi-dotnet) | Fixed-width ISA, control-number linkage, segment counts and parser/writer round trips. |
+
+The [Go gateway](services/patient-gateway-go) adds read-only gRPC queries and deterministic pagination. The [Angular console](web/console-angular) explores patient search, detail views and pipeline status using synthetic local data.
+
+## Start with the console
+
+The fastest way to explore the interface needs Node.js 22 and npm, not a cloud account:
+
+```sh
+git clone https://github.com/ixequiluna-source/health-interop-lab.git
+cd health-interop-lab/web/console-angular
+npm ci
+npm start
 ```
 
-## What each part demonstrates
+Open **http://localhost:4200**. The development configuration uses an in-memory gateway with synthetic patients. Try a patient search, open a record, move between results and inspect the pipeline view. Its status values are fixtures, not live operational telemetry.
 
-| Component | Stack | The substance |
-|---|---|---|
-| [`services/hl7-ingest-java`](services/hl7-ingest-java) | **Java 21**, Maven, JUnit 5, Kafka | A real HL7 v2 ER7 parser — MSH off-by-one, MSH-2 as data, escape sequences resolved last, non-default delimiters, trailing empty fields preserved. MLLP framing. AA/AE/AR acknowledgement semantics and a deliberate no-ACK path. |
-| [`services/fhir-mapper-kotlin`](services/fhir-mapper-kotlin) | **Kotlin**, Gradle, Kafka, MongoDB | Consumes the canonical event, maps it onto FHIR R4 Patient and Encounter, writes the read projection, and refuses to apply a stale update. Dead-letter sink for poison messages. |
-| [`services/patient-gateway-go`](services/patient-gateway-go) | **Go**, **gRPC**, **protobuf**, **OpenTelemetry**, **MongoDB** | Read-only query API. Domain logic with zero generated-code or driver imports. Cursor pagination that does not leak the search term. Diacritic-folding search. Regex escaping on user input. |
-| [`services/claims-edi-dotnet`](services/claims-edi-dotnet) | **C# / .NET 8**, xUnit, **SQS** | Hand-written **EDI X12** reader and writer. Fixed-width ISA, computed SE/GE/IEA counts, control-number linkage, delimiters read from the interchange. FIFO queue with deterministic deduplication so a retry cannot double-bill. |
-| [`web/console-angular`](web/console-angular) | **Angular**, TypeScript strict | Standalone components, signals, new control flow, OnPush, typed reactive forms, a trace-header interceptor, and a stale-response guard proven by test. |
-| [`infra/terraform`](infra/terraform) | **Terraform**, **GCP**, **AWS** | GKE with private nodes, Workload Identity, Calico, etcd envelope encryption and Binary Authorization. Locked six-year audit retention. FIFO claims queue with a TLS-only policy. |
-| [`infra/k8s`](infra/k8s) | **Kubernetes**, Kustomize | Restricted Pod Security Admission, default-deny NetworkPolicy, PDBs, resource quotas, digest pinning in the prod overlay. |
-| [`observability`](observability) | **OpenTelemetry Collector** | PHI redaction processors, tail sampling that keeps every error and every slow trace, bounded receiver. |
-| [`compliance/soc2`](compliance/soc2) | **SOC 2** controls as code | A control matrix where every row names the artifact and the test that fails the build when it regresses. |
-
-## The tests are the point
-
-```
-Java        129 assertions verified across the parser, mapper, ACK builder and MLLP codec
-Go          domain tests including a 25-iteration determinism check on search ordering
-Angular     134 tests, 11 files, vitest + jsdom
-Policy      68 SOC 2 control checks, ~2 seconds
-Kotlin      mapper, staleness, projection, config and consumer tests
-C#          ISA layout, SE counting, control-number linkage, round-trip, dedup
+```sh
+# In web/console-angular
+npm test -- --watch=false
+npm run build
 ```
 
-Every language has its own CI workflow in [`.github/workflows`](.github/workflows).
+The production build selects the HTTP gateway and requires a compatible server-side adapter; it is not the same self-contained demo. See [architecture and integration boundaries](docs/ARCHITECTURE.md).
 
-## Design decisions worth arguing about
+## Read the system in layers
 
-Each of these is a place where the obvious implementation is wrong in a way that only shows up
-in production. They are documented at the call site, not just here.
+```mermaid
+flowchart LR
+  HL7[HL7 v2 / MLLP] --> Java[Java ingest]
+  Java --> Kafka[Kafka events]
+  Kafka --> Kotlin[Kotlin FHIR mapper]
+  Kotlin --> Mongo[(MongoDB projections)]
+  Mongo --> Go[Go gRPC gateway]
+  Fixture[Synthetic fixtures] --> Console[Angular local console]
+  Files[Admission + charge JSON files] --> Claims[C# X12 worker]
+  Claims --> SQS[SQS FIFO]
+```
 
-**MSH is off by one.** MSH-1 *is* the field separator, so the header's token layout differs
-from every other segment. Parsers that split uniformly report MSH-10 as MSH-9, and the
-acknowledgement then quotes the wrong control id — so the sending system never closes the
-message out and resends it indefinitely.
+Solid paths describe implemented component interfaces; this diagram is not proof of a deployed end-to-end environment. The console-to-gRPC adapter and upstream assembly of claim files remain integration work.
 
-**An ACK is a promise about durability.** Returning `AA` before the event is durably published
-tells the hospital an admission is safe when it was never written. This service withholds the
-acknowledgement and drops the connection instead, so the sender retries.
+## Evidence over adjectives
 
-**`requests` and `limits` are different controls.** No limit lets a pod starve its neighbours.
-No request gives the pod BestEffort QoS, making it the first thing evicted under memory
-pressure — for the MLLP listener, that means dropping a live clinical feed exactly when the
-node is busiest.
+Each language has a [dedicated workflow](.github/workflows). Badges link to its latest execution; path-filtered workflows can refer to different commits. A green service build does not prove the whole distributed pipeline works together.
 
-**At-least-once delivery means billing a patient twice.** Duplicate claims adjudicate rather
-than bounce, and the recovery is a recoupment plus, in the United States, False Claims Act
-exposure. Hence a FIFO queue and a deduplication id derived deterministically from the claim.
+The [policy suite](tools/policy/test_policies.py) checks infrastructure declarations without cloud credentials:
 
-**Hashing an identifier is not de-identification.** A hashed MRN is a stable per-patient key
-that re-identifies anyone who can correlate it with a second dataset. Page tokens carry a hash
-of the *search term* (enough to detect cursor reuse) and the collector *deletes* patient
-attributes rather than hashing them.
-
-**NetworkPolicy without an enforcer is inert YAML.** It reads exactly like segmentation and
-does nothing. That is why `network_policy { enabled = true }` is not optional in the Terraform,
-and why a policy test asserts the read gateway has no egress path to Kafka.
-
-**Partial dates are legal in HL7.** `1974`, `197403` and `19740314` all occur. Padding a
-partial date to January 1st invents a birthday, and paediatric dosing downstream is computed
-from it. The mapper widens instead of guessing.
-
-## Running it
-
-Each service runs standalone with no external dependencies — the ingest falls back to an
-in-memory sink, the gateway to a seeded in-memory store, and the console to an in-memory
-gateway that implements the same pagination contract.
-
-```bash
-# Java: MLLP listener on 2575, health on 8080
-cd services/hl7-ingest-java && mvn -B verify && java -jar target/hl7-ingest.jar
-
-# Go: gRPC on 9090
-cd services/patient-gateway-go && make build && go run .
-
-# Angular: http://localhost:4200
-cd web/console-angular && npm ci && npm start
-
-# Policy gate
+```sh
+# From the repository root, in a Python virtual environment
+python -m pip install pytest pyyaml
 python -m pytest tools/policy/test_policies.py -v
 ```
 
-Send a message through the pipeline:
+[Review notes and verification scope](docs/REVIEW-2026-09-19.md) distinguish local checks, existing CI evidence and outstanding integration work.
 
-```bash
-printf '\x0bMSH|^~\\&|EPIC_ADT|HGS|LAB|FIRMUS|20260825143000||ADT^A01|MSG1|P|2.5.1\rPID|1||MRN-1||Luna^Ixequi\rPV1|1|I\x1c\r' \
-  | nc localhost 2575
-```
+## Boundaries
 
-## Scope and honesty
+This is a reference lab using synthetic data, not a clinical deployment or a certified product. The [control matrix](compliance/soc2/control-matrix.md) maps technical checks to control objectives; it is not a SOC 2 attestation or a declaration of HIPAA compliance. FIFO deduplication is one delivery control, not a guarantee against duplicate billing across an entire system.
 
-The compliance material demonstrates that security and availability controls can be expressed
-as code and enforced by CI. It is **not** a SOC 2 report: a real attestation covers a service
-organization's operating effectiveness over a period, assessed by an independent auditor, and
-most of its scope is organizational rather than technical. Nothing here is a claim of
-certification. The same applies to HIPAA references — they name the requirement a control is
-aimed at, not a compliance status.
+Infrastructure files are reviewable examples. Cloud provisioning, real patient data and production operation require separate validation and operational controls.
 
-Sample data is synthetic. No real patient data appears anywhere in this repository.
+## Author
 
----
-
-Built by [Dr. Ixequi Luna](https://ixequiluna.ai) — physician, AI architect, and the person
-who wrote every line here.
+Maintained by **[Dr. Ixequi Luna](https://ixequiluna.ai)**. Explore the implementation, inspect the tests, or [open an issue](https://github.com/ixequiluna-source/health-interop-lab/issues) with a reproducible failure and synthetic input.

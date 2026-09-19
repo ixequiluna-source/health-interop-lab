@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 440" role="img" aria-labelledby="title desc">
+ <title id="title">Health Interop Lab</title><desc id="desc">Follow the message. Inspect the contract. Challenge the failure.</desc>
+ <rect width="1200" height="440" rx="24" fill="#09151d"/>
+ <path d="M870 0v440M950 0v440M1030 0v440M1110 0v440M800 80h400M800 160h400M800 240h400" stroke="#193340" stroke-width="1"/>
+ <circle cx="1070" cy="115" r="60" fill="none" stroke="#78e5c4" stroke-width="2"/><circle cx="1070" cy="115" r="37" fill="none" stroke="#385b65"/><path d="M1010 115h120M1070 55v120" stroke="#78e5c4"/>
+ <g font-family="Arial,Helvetica,sans-serif"><text x="64" y="73" fill="#78e5c4" font-size="14" letter-spacing="3">CLINICAL SYSTEMS / REFERENCE IMPLEMENTATION</text>
+ <text x="60" y="159" fill="#f4f8fa" font-size="66" font-weight="700" letter-spacing="-2">Health Interop Lab</text>
+ <text x="64" y="208" fill="#afc5cf" font-size="23">Follow the message. Inspect the contract. Challenge the failure.</text><rect x="64" y="268" width="340" height="110" rx="16" fill="#13232d" stroke="#29414c"/><text x="86" y="309" fill="#78e5c4" font-size="13" letter-spacing="2">01 / INGEST</text><text x="86" y="348" fill="#e9f3f5" font-size="22">HL7 v2 → events</text><rect x="422" y="268" width="340" height="110" rx="16" fill="#13232d" stroke="#29414c"/><text x="444" y="309" fill="#78e5c4" font-size="13" letter-spacing="2">02 / PROJECT</text><text x="444" y="348" fill="#e9f3f5" font-size="22">FHIR R4 → queries</text><rect x="780" y="268" width="340" height="110" rx="16" fill="#13232d" stroke="#29414c"/><text x="802" y="309" fill="#78e5c4" font-size="13" letter-spacing="2">03 / VERIFY</text><text x="802" y="348" fill="#e9f3f5" font-size="22">Tests + controls as code</text>
+ <text x="64" y="413" fill="#9cb3bd" font-size="12" letter-spacing="2">IXEQUI LUNA / ENGINEERING PORTFOLIO</text></g></svg>

@@ -39,8 +39,8 @@ jobs:
         working-directory: web/console-angular
         run: |
           npm ci
-          npm install --no-save --package-lock=false playwright@1.56.1
-          npx playwright install --with-deps chromium
+          npm install --prefix /tmp/demo-browser playwright@1.56.1
+          node /tmp/demo-browser/node_modules/playwright/cli.js install --with-deps chromium
       - name: Exercise the real connected demo
         run: |
           /tmp/patient-gateway > /tmp/gateway.log 2>&1 &
@@ -48,7 +48,7 @@ jobs:
           cd web/console-angular
           npm run start:connected -- --host 127.0.0.1 > /tmp/console.log 2>&1 &
           cd ../..
-          NODE_PATH="$PWD/web/console-angular/node_modules" node tools/connected-demo.cjs
+          NODE_PATH=/tmp/demo-browser/node_modules node tools/connected-demo.cjs
       - name: Preserve synthetic demo evidence
         if: always()
         uses: actions/upload-artifact@v4

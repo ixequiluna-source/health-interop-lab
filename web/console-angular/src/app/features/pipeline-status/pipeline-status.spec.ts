@@ -166,7 +166,8 @@ describe('PipelineStatusPage', () => {
     // A green "0 failed" for a read gateway is indistinguishable from "nothing has failed
     // today", which is a materially different claim.
     expect(element.querySelector('.counters')).toBeNull();
-    expect(element.textContent).toContain('does not own a message disposition');
+    expect(element.textContent).toContain('No message counters available');
+    expect(element.textContent).toContain('unmeasured services are excluded');
   });
 
   it('excludes rejected messages from the failure rollup', async () => {
